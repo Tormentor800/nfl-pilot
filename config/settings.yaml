@@ -1,0 +1,9 @@
+timezone: "America/New_York"
+refresh_hour_et: 6
+output_dir: "data"
+latest_filename: "latest.csv"
+archive_dir: "archive"
+log_dir: "logs"
+only_teams_playing_today: true
+date_override: "2025-11-02"
+

@@ -1,0 +1,43 @@
+name,description
+game_date,Date
+game_id,Internal game id
+team,Team
+opponent,Opponent
+home_away,H/A
+
+NFL 1,Completion percentage (team, season-to-date)
+NFL 2,First downs per game (team)
+NFL 3,4th down conversion percentage (offense)
+NFL 4,Field goal percentage (team kicker unit)
+NFL 5,Offensive points per game
+NFL 6,Giveaway–takeaway differential per game
+NFL 7,Defensive interceptions per game (team)
+NFL 8,Defensive forced fumbles per game (team)
+NFL 9,Sacks per game (team defense)
+NFL 10,Penalties per game (team committed)
+NFL 11,Passing first downs per game
+NFL 12,Rushing first downs per game
+NFL 13,Penalty first downs per game
+NFL 14,3rd down conversion percentage (offense)
+NFL 15,4th down attempts per game
+NFL 16,Fumbles lost per game (offense)
+NFL 17,Kickoff return yards per game
+NFL 18,Punt return yards per game
+NFL 19,Field goals made per game
+NFL 20,Field goal attempts per game
+NFL 21,FG% 40–49 yards
+NFL 22,FG% 50+ yards
+NFL 23,Defensive touchdowns per game
+NFL 24,INT return yards per game
+NFL 25,Fumble return yards per game
+NFL 26,Points allowed per game (defense)
+NFL 27,Passing yards allowed per game (defense)
+NFL 28,Rushing yards allowed per game (defense)
+NFL 29,Extra point percentage
+NFL 30,Extra point attempts per game
+NFL 31,Extra points made per game
+NFL 32,Kickoff average yards
+NFL 33,Gross punt average yards
+NFL 34,Home points per game
+NFL 35,Road points per game
+NFL 36,League-wide baseline QB rating (constant)

@@ -1,0 +1,3 @@
+game_date,week,team,opponent,home_away,kickoff_et,off_1q_pts_pg,off_4q_pts_pg,def_1q_pts_allowed_pg,def_4q_pts_allowed_pg,rush_att_pg,pass_att_pg,pass_comp_pg,pass_comp_pct,league_qb_rating,penalties_pg,fourth_down_off_pct,pts_pg_home,pts_pg_road,team_pass_yds_pg,team_rush_yds_pg,team_recv_yds_pg,first_downs_total,third_down_made_pg,kick_return_yds_pg,punt_return_yds_pg,def_team_int_pg,def_team_ff_pg,def_team_sacks_pg,give_take_diff,def_pass_yds_allowed_pg,def_recv_yds_allowed_pg,starter_qb_pass_yds,starter_rb_rush_yds,starter_wr_recv_yds,starter_k_fg_pct
+2025-11-04,,DAL,WAS,H,2025-11-04 20:25:00,,,,,,,,,90.0,,,,,,,,,,,,,,,,,,,,,
+2025-11-04,,WAS,DAL,A,2025-11-04 20:25:00,,,,,,,,,90.0,,,,,,,,,,,,,,,,,,,,,
