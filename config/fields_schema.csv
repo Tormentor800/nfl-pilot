@@ -41,3 +41,7 @@ NFL 33,Gross punt average yards
 NFL 34,Home points per game
 NFL 35,Road points per game
 NFL 36,League-wide baseline QB rating (constant)
+QB_YDS,Starting QB passing yards (season-to-date)
+RB_YDS,Starting RB rushing yards (season-to-date)
+WR_YDS,Starting WR receiving yards (season-to-date)
+K_FG_PCT,Starting K field goal percentage (season-to-date)

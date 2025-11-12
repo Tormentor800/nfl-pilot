@@ -1,8 +1,9 @@
-from .utils import load_settings, ensure_dirs, today_et, read_schema
+﻿from .utils import load_settings, ensure_dirs, today_et, read_schema
 from .schedule import get_matchups
 from .team_stats import get_team_metrics
-from .output import write_csv
 from .derived import get_home_road_ppg
+from .starters import get_starter_metrics
+from .output import write_csv
 
 
 def build_row(
@@ -14,8 +15,9 @@ def build_row(
     schema,
     team_metrics: dict,
     home_road: dict | None = None,
+    starter_metrics: dict | None = None,
 ) -> dict:
-    """Assemble a single row of NFL metrics."""
+    # base fields
     row = {
         "game_date": date_str,
         "game_id": game_id,
@@ -24,21 +26,28 @@ def build_row(
         "home_away": home_away,
     }
 
-    # initialize all NFL columns as blank
+    # initialise all schema columns to None so layout is stable
     for col in schema:
-        if col.startswith("NFL "):
+        if col not in row:
             row[col] = None
 
-    # fill from team metrics
-    m = team_metrics.get(team, {})
-    for k, v in m.items():
+    # team metrics (NFL 1..36 etc.)
+    t = team_metrics.get(team, {})
+    for k, v in t.items():
         if k in row:
             row[k] = v
 
-    # fill from derived metrics (home/road, etc.)
+    # derived home/road PPG
     if home_road:
         hr = home_road.get(team, {})
         for k, v in hr.items():
+            if k in row:
+                row[k] = v
+
+    # starter metrics
+    if starter_metrics:
+        sm = starter_metrics.get(team, {})
+        for k, v in sm.items():
             if k in row:
                 row[k] = v
 
@@ -46,42 +55,39 @@ def build_row(
 
 
 def run():
-    """Main execution pipeline."""
     settings = load_settings()
     ensure_dirs(settings["output_dir"], settings["archive_dir"], settings["log_dir"])
     schema = read_schema()
 
-    # Determine date
-    date_override = (settings.get("date_override") or "").strip()
-    if date_override:
-        date_str = date_override
-        try:
-            matchups = get_matchups(date_override)
-        except TypeError:
-            matchups = get_matchups()
-    else:
-        tz = settings.get("timezone", "America/New_York")
-        date_str = str(today_et(tz))
-        try:
-            matchups = get_matchups()
-        except TypeError:
-            matchups = get_matchups(None)
+    tz = settings.get("timezone", "America/New_York")
+    date_str = str(today_et(tz))
 
-    # If no matchups, write empty CSV
+    matchups = get_matchups()
+
     if not matchups:
         print(f"No NFL games found for {date_str}; writing empty file.")
         rows: list[dict] = []
     else:
-        # Fetch data
+        print(f"[schedule] {len(matchups)} rows for {date_str.replace('-', '')}")
         team_metrics = get_team_metrics()
         home_road = get_home_road_ppg()
+        starter_metrics = get_starter_metrics()
 
         rows = [
-            build_row(date_str, game_id, team, opp, ha, schema, team_metrics, home_road)
+            build_row(
+                date_str,
+                game_id,
+                team,
+                opp,
+                ha,
+                schema,
+                team_metrics,
+                home_road,
+                starter_metrics,
+            )
             for (game_id, team, opp, ha) in matchups
         ]
 
-    # Write output
     latest_path = f'{settings["output_dir"]}/{settings["latest_filename"]}'
     write_csv(rows, schema, latest_path, settings["archive_dir"])
     print(f"✅ wrote {len(rows)} rows → {latest_path}")
