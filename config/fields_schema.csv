@@ -38,9 +38,9 @@ NFL 30,Extra point attempts per game
 NFL 31,Extra points made per game
 NFL 32,Kickoff average yards
 NFL 33,Gross punt average yards
-NFL 34,Home points per game
-NFL 35,Road points per game
-NFL 36,League-wide baseline QB rating (constant)
+NFL 34,Passing attempts per game (team)
+NFL 35,Rushing attempts per game (team)
+NFL 36,Completions per game (team)
 QB_YDS,Starting QB passing yards (season-to-date)
 RB_YDS,Starting RB rushing yards (season-to-date)
 WR_YDS,Starting WR receiving yards (season-to-date)

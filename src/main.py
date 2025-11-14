@@ -59,38 +59,28 @@ def run():
     ensure_dirs(settings["output_dir"], settings["archive_dir"], settings["log_dir"])
     schema = read_schema()
 
-    tz = settings.get("timezone", "America/New_York")
-    date_str = str(today_et(tz))
+    # Use a fixed date for now to guarantee matchups (e.g. 2025-11-02)
+    target_date = "2025-11-02"  # TODO: switch back to today_et() when you want live daily
 
-    matchups = get_matchups()
+    date_str = target_date
+    matchups = get_matchups(target_date)
 
     if not matchups:
         print(f"No NFL games found for {date_str}; writing empty file.")
         rows: list[dict] = []
     else:
-        print(f"[schedule] {len(matchups)} rows for {date_str.replace('-', '')}")
         team_metrics = get_team_metrics()
         home_road = get_home_road_ppg()
-        starter_metrics = get_starter_metrics()
 
         rows = [
-            build_row(
-                date_str,
-                game_id,
-                team,
-                opp,
-                ha,
-                schema,
-                team_metrics,
-                home_road,
-                starter_metrics,
-            )
+            build_row(date_str, game_id, team, opp, ha, schema, team_metrics, home_road)
             for (game_id, team, opp, ha) in matchups
         ]
 
     latest_path = f'{settings["output_dir"]}/{settings["latest_filename"]}'
     write_csv(rows, schema, latest_path, settings["archive_dir"])
     print(f"✅ wrote {len(rows)} rows → {latest_path}")
+
 
 
 if __name__ == "__main__":

@@ -299,7 +299,32 @@ def get_team_metrics():
         # NFL 34/35 – home/road PPG (from derived.py, NOT here)
 
         # NFL 36 – League-wide baseline QB rating (constant)
-        m["NFL 36"] = 90.0
+        # m["NFL 36"] = 90.0
+	        # ---------- VOLUME: ATTEMPTS & COMPLETIONS PER GAME ----------
+
+        # NFL 34: Passing attempts per game
+        v = raw.get("passingAttempts")
+        if v is not None:
+            try:
+                m["NFL 34"] = round(float(v) / gp, 2)
+            except Exception:
+                pass
+
+        # NFL 35: Rushing attempts per game
+        v = raw.get("rushingAttempts")
+        if v is not None:
+            try:
+                m["NFL 35"] = round(float(v) / gp, 2)
+            except Exception:
+                pass
+
+        # NFL 36: Completions per game
+        v = raw.get("completions")
+        if v is not None:
+            try:
+                m["NFL 36"] = round(float(v) / gp, 2)
+            except Exception:
+                pass
 
         if m:
             metrics[abbr] = m
