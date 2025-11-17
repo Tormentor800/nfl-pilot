@@ -1,4 +1,7 @@
-import requests
+﻿import requests
+from datetime import datetime
+from typing import Dict, Any, Optional
+
 
 HEADERS = {
     "User-Agent": (
@@ -12,7 +15,7 @@ HEADERS = {
 }
 
 # ESPN team IDs by abbreviation (regular season)
-TEAM_IDS = {
+TEAM_IDS: Dict[str, int] = {
     "ARI": 22,
     "ATL": 1,
     "BAL": 33,
@@ -29,7 +32,7 @@ TEAM_IDS = {
     "IND": 11,
     "JAX": 30,
     "KC": 12,
-    "LV": 13,
+    "LV": 13,   # Raiders
     "LAC": 24,
     "LAR": 14,
     "MIA": 15,
@@ -44,23 +47,28 @@ TEAM_IDS = {
     "SEA": 26,
     "TB": 27,
     "TEN": 10,
-    "WSH": 28,
+    "WSH": 28,  # Commanders
 }
 
 
-def _season_and_type():
-    """Infer current NFL regular season."""
-    from datetime import datetime
-
+def _season_and_type() -> (int, int):
+    """
+    Decide which season + type to query.
+    For now: infer from current year; this is simple and safe enough.
+    """
     today = datetime.utcnow().date()
     year = today.year
+    # For games from Jan–Feb, use previous season
     if today.month in (1, 2):
         year -= 1
-    return year, 2  # type=2 regular season
+    # type=2 is regular season
+    return year, 2
 
 
-def _collect_stats(obj, out: dict):
-    """Flatten ESPN stats JSON into {name: value} for any numeric stat."""
+def _collect_stats(obj: Any, out: Dict[str, Any]) -> None:
+    """
+    Recursively walk ESPN JSON and pull any numeric {name, value} stats.
+    """
     if isinstance(obj, dict):
         name = obj.get("name")
         val = obj.get("value")
@@ -73,13 +81,17 @@ def _collect_stats(obj, out: dict):
             _collect_stats(item, out)
 
 
-def _fetch_team_stats(team_abbr: str) -> dict:
-    """Fetch ESPN team statistics for one team; return flat dict."""
+def _fetch_team_stats(team_abbr: str) -> Dict[str, Any]:
+    """
+    Call ESPN's team statistics endpoint for a single team and return a flat dict of stats.
+    If anything fails, return {} so we never break the pipeline.
+    """
     team_id = TEAM_IDS.get(team_abbr)
     if not team_id:
         return {}
 
     season, season_type = _season_and_type()
+
     url = (
         f"https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/"
         f"seasons/{season}/types/{season_type}/teams/{team_id}/statistics"
@@ -93,238 +105,196 @@ def _fetch_team_stats(team_abbr: str) -> dict:
         print(f"[team_stats] failed to fetch stats for {team_abbr}: {e}")
         return {}
 
-    flat: dict = {}
-    _collect_stats(data, flat)
-    return flat
+    out: Dict[str, Any] = {}
+    _collect_stats(data, out)
+    return out
 
 
-def _num(raw: dict, key: str):
-    v = raw.get(key)
-    if v is None:
-        return None
-    try:
-        return float(v)
-    except Exception:
-        return None
-
-
-def _per_game(raw: dict, total_key: str, gp: float):
-    v = _num(raw, total_key)
-    if v is None or gp <= 0:
-        return None
-    return v / gp
-
-
-def get_team_metrics():
+def get_team_metrics() -> Dict[str, Dict[str, float]]:
     """
-    Map ESPN team stats JSON into NFL 1..36 columns.
+    Map ESPN team stats JSON into NFL 5..32 columns from John's 34-metric spec.
 
-    Uses John’s definitions as close as ESPN allows.
-    Any missing stat -> column left blank (never breaks).
+    NFL 1..4 are starter-based (QB/RB/WR/K) and are filled in main.py via the
+    `starters` module.
+    NFL 33..34 (road/home PPG) are filled in main.py via derived.get_home_road_ppg().
+
+    This function focuses on team-level stats: NFL 5..32.
     """
-    metrics: dict[str, dict] = {}
+    metrics: Dict[str, Dict[str, float]] = {}
 
-    for abbr in TEAM_IDS:
+    for abbr in TEAM_IDS.keys():
         raw = _fetch_team_stats(abbr)
         if not raw:
             continue
 
-        gp = (
-            _num(raw, "teamGamesPlayed")
-            or _num(raw, "gamesPlayed")
+        m: Dict[str, float] = {}
+        gp = float(
+            raw.get("gamesPlayed")
+            or raw.get("teamGamesPlayed")
             or 1.0
         )
 
-        m: dict[str, float] = {}
+        def per_game(key: str) -> Optional[float]:
+            v = raw.get(key)
+            if v is None:
+                return None
+            try:
+                return float(v) / gp
+            except Exception:
+                return None
 
-        # ---------- OFFENSE / TEAM EFFICIENCY ----------
-
-        # NFL 1 – Completion percentage (team)
-        v = _num(raw, "completionPct")
+        # ---- NFL 5: Team offensive passing yards per game ----
+        v = (
+            raw.get("passingYardsPerGame")
+            or raw.get("netPassingYardsPerGame")
+            or (per_game("netPassingYards") if "netPassingYards" in raw else None)
+        )
+        if v is None and "passingYards" in raw:
+            v = per_game("passingYards")
         if v is not None:
-            m["NFL 1"] = round(v, 2)
+            m["NFL 5"] = round(float(v), 2)
 
-        # NFL 2 – First downs per game
-        v = _num(raw, "firstDownsPerGame") or _per_game(raw, "firstDowns", gp)
+        # ---- NFL 6: Team offensive rushing yards per game ----
+        v = raw.get("rushingYardsPerGame") or per_game("rushingYards")
         if v is not None:
-            m["NFL 2"] = round(v, 2)
+            m["NFL 6"] = round(float(v), 2)
 
-        # NFL 3 – 4th down conversion percentage (offense)
-        v = _num(raw, "fourthDownConvPct")
+        # ---- NFL 7: Team receiving yards per game ----
+        v = raw.get("receivingYardsPerGame") or per_game("receivingYards")
         if v is not None:
-            m["NFL 3"] = round(v, 2)
+            m["NFL 7"] = round(float(v), 2)
 
-        # NFL 4 – Field goal percentage
-        v = _num(raw, "fieldGoalPct")
+        # ---- NFL 8: Team first downs per game ----
+        v = raw.get("firstDownsPerGame") or per_game("firstDowns")
         if v is not None:
-            m["NFL 4"] = round(v, 2)
+            m["NFL 8"] = round(float(v), 2)
 
-        # NFL 5 – Offensive points per game
-        v = _num(raw, "totalPointsPerGame")
+        # ---- NFL 9: Team 3rd-down conversion percentage ----
+        v = raw.get("thirdDownConvPct")
         if v is not None:
-            m["NFL 5"] = round(v, 2)
+            m["NFL 9"] = round(float(v), 2)
 
-        # NFL 6 – Giveaway–takeaway differential per game
-        give = _num(raw, "totalGiveaways")
-        take = _num(raw, "totalTakeaways")
+        # ---- NFL 10: Team kickoff return yards per game ----
+        v = per_game("kickoffReturnYards")
+        if v is not None:
+            m["NFL 10"] = round(float(v), 2)
+
+        # ---- NFL 11: Team punt return yards per game ----
+        v = per_game("puntReturnYards")
+        if v is not None:
+            m["NFL 11"] = round(float(v), 2)
+
+        # ---- NFL 12: Team sacks per game (defense) ----
+        v = per_game("sacks")
+        if v is not None:
+            m["NFL 12"] = round(float(v), 3)
+
+        # ---- NFL 13: Defensive interceptions per game (proxy for top defender INTs) ----
+        v = raw.get("defInterceptions") or raw.get("interceptionsAgainst")
+        if v is None:
+            take = raw.get("totalTakeaways")
+            fum_rec = raw.get("fumbleRecoveries") or raw.get("fumblesRecovered")
+            if take is not None:
+                try:
+                    v = float(take) - float(fum_rec or 0)
+                except Exception:
+                    v = None
+        if v is not None:
+            m["NFL 13"] = round(float(v) / gp, 3)
+
+        # ---- NFL 14: Defensive forced fumbles per game ----
+        v = per_game("fumblesForced")
+        if v is not None:
+            m["NFL 14"] = round(float(v), 3)
+
+        # ---- NFL 15: Team passing yards allowed per game ----
+        v = (
+            raw.get("passYardsAllowedPerGame")
+            or raw.get("passingYardsAllowedPerGame")
+        )
+        if v is None and "yardsAllowed" in raw and "rushingYardsAllowedPerGame" in raw:
+            try:
+                v = float(raw["yardsAllowed"]) / gp - float(
+                    raw["rushingYardsAllowedPerGame"]
+                )
+            except Exception:
+                v = None
+        if v is not None:
+            m["NFL 15"] = round(float(v), 2)
+
+        # ---- NFL 16: Team rushing yards allowed per game ----
+        v = raw.get("rushYardsAllowedPerGame") or raw.get("rushingYardsAllowedPerGame")
+        if v is not None:
+            m["NFL 16"] = round(float(v), 2)
+
+        # ---- NFL 17: Team receiving yards allowed per game ----
+        v = m.get("NFL 15")
+        if v is not None:
+            m["NFL 17"] = v
+
+        # ---- NFL 18: Giveaway–takeaway differential per game ----
+        give = raw.get("totalGiveaways") or raw.get("giveaways")
+        take = raw.get("totalTakeaways") or raw.get("takeaways")
         if give is not None and take is not None:
-            m["NFL 6"] = round((take - give) / gp, 3)
-
-        # NFL 7 – Interceptions thrown per game
-        v = _num(raw, "interceptions")
-        if v is not None:
-            m["NFL 7"] = round(v / gp, 3)
-
-        # NFL 8 – Fumbles lost per game
-        v = _num(raw, "fumblesLost")
-        if v is not None:
-            m["NFL 8"] = round(v / gp, 3)
-
-        # NFL 9 – Sacks (defense) per game
-        v = _num(raw, "sacks")
-        if v is not None:
-            m["NFL 9"] = round(v / gp, 3)
-
-        # NFL 10 – Penalties per game (team committed)
-        v = _num(raw, "totalPenalties")
-        if v is not None:
-            m["NFL 10"] = round(v / gp, 3)
-
-        # NFL 11 – Passing offense yards per game
-        v = _num(raw, "passingYardsPerGame")
-        if v is not None:
-            m["NFL 11"] = round(v, 2)
-
-        # NFL 12 – Rushing offense yards per game
-        v = _num(raw, "rushingYardsPerGame")
-        if v is not None:
-            m["NFL 12"] = round(v, 2)
-
-        # NFL 13 – Receiving yards per game
-        v = _num(raw, "receivingYardsPerGame")
-        if v is not None:
-            m["NFL 13"] = round(v, 2)
-
-        # NFL 14 – 3rd down conversion percentage
-        v = _num(raw, "thirdDownConvPct")
-        if v is not None:
-            m["NFL 14"] = round(v, 2)
-
-        # NFL 15 – Kickoff return yards per game
-        v = _per_game(raw, "kickoffReturnYards", gp)
-        if v is not None:
-            m["NFL 15"] = round(v, 2)
-
-        # NFL 16 – Punt return yards per game
-        v = _per_game(raw, "puntReturnYards", gp)
-        if v is not None:
-            m["NFL 16"] = round(v, 2)
-
-        # ---------- DEFENSE & TURNOVERS ----------
-
-        # NFL 17 – Defensive interceptions per game
-        v = _num(raw, "interceptionTouchdowns")  # if you prefer INTs, adjust key
-        # If that key isn't right for your sheet, switch to def INT key you prefer.
-        # For now leave blank unless clear.
-
-        # (Safer: use totalTakeaways - fumblesRecovered as proxy for INTs)
-        # We'll keep NFL 17 optional.
-
-        # NFL 18 – Defensive forced fumbles per game
-        v = _num(raw, "fumblesForced")
-        if v is not None:
-            m["NFL 18"] = round(v / gp, 3)
-
-        # NFL 19 – Defensive sacks per game (already in NFL 9; you can adjust)
-        # To avoid duplication you can leave 19 blank or reuse:
-        if "NFL 9" in m:
-            m["NFL 19"] = m["NFL 9"]
-
-        # NFL 20 – Passing yards allowed per game
-        v = _num(raw, "yardsAllowed")  # ESPN doesn’t split pass/rush cleanly here
-        # You can refine via PFR; for now keep blank or rough.
-        # m["NFL 20"] = ...
-
-        # NFL 21 – Rushing yards allowed per game
-        # See note above; requires game-log or split stats.
-
-        # NFL 22 – Points allowed per game
-        v = _per_game(raw, "pointsAllowed", gp)
-        if v is not None:
-            m["NFL 26"] = round(v, 2)  # maps to schema NFL 26
-
-        # NFL 23 – Takeaways per game (INT + FR)
-        take = _num(raw, "totalTakeaways")
-        if take is not None:
-            m["NFL 23"] = round(take / gp, 3)
-
-        # NFL 24 – Penalties (defense/team) per game
-        if "NFL 10" in m:
-            m["NFL 24"] = m["NFL 10"]
-
-        # NFL 25 – Penalty yards per game
-        v = _num(raw, "totalPenaltyYards")
-        if v is not None:
-            m["NFL 25"] = round(v / gp, 2)
-
-        # ---------- 4TH DOWN / SPECIAL TEAMS ----------
-
-        # NFL 26/27/28 already partly mapped above; can refine as needed.
-
-        # NFL 29 – Extra point percentage
-        v = _num(raw, "extraPointPct")
-        if v is not None:
-            m["NFL 29"] = round(v, 2)
-
-        # NFL 30 – Extra point attempts per game
-        v = _num(raw, "extraPointAttempts")
-        if v is not None:
-            m["NFL 30"] = round(v / gp, 3)
-
-        # NFL 31 – Extra points made per game
-        v = _num(raw, "extraPointsMade")
-        if v is not None:
-            m["NFL 31"] = round(v / gp, 3)
-
-        # NFL 32 – Kickoff average yards
-        v = _num(raw, "avgKickoffYards")
-        if v is not None:
-            m["NFL 32"] = round(v, 2)
-
-        # NFL 33 – Gross punt average yards
-        v = _num(raw, "grossAvgPuntYards")
-        if v is not None:
-            m["NFL 33"] = round(v, 2)
-
-        # NFL 34/35 – home/road PPG (from derived.py, NOT here)
-
-        # NFL 36 – League-wide baseline QB rating (constant)
-        # m["NFL 36"] = 90.0
-	        # ---------- VOLUME: ATTEMPTS & COMPLETIONS PER GAME ----------
-
-        # NFL 34: Passing attempts per game
-        v = raw.get("passingAttempts")
-        if v is not None:
             try:
-                m["NFL 34"] = round(float(v) / gp, 2)
+                m["NFL 18"] = round((float(take) - float(give)) / gp, 3)
             except Exception:
                 pass
 
-        # NFL 35: Rushing attempts per game
-        v = raw.get("rushingAttempts")
+        # ---- NFL 19: Team defensive interceptions per game (full defense) ----
+        v = raw.get("defInterceptions") or raw.get("interceptionsAgainst")
         if v is not None:
-            try:
-                m["NFL 35"] = round(float(v) / gp, 2)
-            except Exception:
-                pass
+            m["NFL 19"] = round(float(v) / gp, 3)
 
-        # NFL 36: Completions per game
-        v = raw.get("completions")
+        # ---- NFL 20: Team fumbles per game (offense giveaways via fumbles) ----
+        v = per_game("fumblesLost")
         if v is not None:
-            try:
-                m["NFL 36"] = round(float(v) / gp, 2)
-            except Exception:
-                pass
+            m["NFL 20"] = round(float(v), 3)
+
+        # ---- NFL 21: Team sacks per game (duplicate) ----
+        if "NFL 12" in m:
+            m["NFL 21"] = m["NFL 12"]
+
+        # ---- NFL 22–25: quarter-based scoring placeholders (numeric, non-blank) ----
+        m.setdefault("NFL 22", 0.0)
+        m.setdefault("NFL 23", 0.0)
+        m.setdefault("NFL 24", 0.0)
+        m.setdefault("NFL 25", 0.0)
+
+        # ---- NFL 26: Rushing attempts per game ----
+        v = per_game("rushingAttempts")
+        if v is not None:
+            m["NFL 26"] = round(float(v), 3)
+
+        # ---- NFL 27: Passing attempts per game ----
+        v = per_game("passingAttempts")
+        if v is not None:
+            m["NFL 27"] = round(float(v), 3)
+
+        # ---- NFL 28: Completions per game ----
+        v = per_game("completions")
+        if v is not None:
+            m["NFL 28"] = round(float(v), 3)
+
+        # ---- NFL 29: QB rating ----
+        v = raw.get("quarterbackRating") or raw.get("QBRating")
+        if v is not None:
+            m["NFL 29"] = round(float(v), 2)
+
+        # ---- NFL 30: Completion percentage ----
+        v = raw.get("completionPct")
+        if v is not None:
+            m["NFL 30"] = round(float(v), 2)
+
+        # ---- NFL 31: Penalties per game ----
+        v = per_game("totalPenalties") or per_game("penalties")
+        if v is not None:
+            m["NFL 31"] = round(float(v), 3)
+
+        # ---- NFL 32: 4th-down conversion percentage (offense) ----
+        v = raw.get("fourthDownConvPct")
+        if v is not None:
+            m["NFL 32"] = round(float(v), 2)
 
         if m:
             metrics[abbr] = m

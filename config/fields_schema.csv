@@ -1,47 +1,42 @@
-name,description
+﻿name,description
 game_date,Date
 game_id,Internal game id
 team,Team
 opponent,Opponent
 home_away,H/A
 
-NFL 1,Completion percentage (team, season-to-date)
-NFL 2,First downs per game (team)
-NFL 3,4th down conversion percentage (offense)
-NFL 4,Field goal percentage (team kicker unit)
-NFL 5,Offensive points per game
-NFL 6,Giveaway–takeaway differential per game
-NFL 7,Defensive interceptions per game (team)
-NFL 8,Defensive forced fumbles per game (team)
-NFL 9,Sacks per game (team defense)
-NFL 10,Penalties per game (team committed)
-NFL 11,Passing first downs per game
-NFL 12,Rushing first downs per game
-NFL 13,Penalty first downs per game
-NFL 14,3rd down conversion percentage (offense)
-NFL 15,4th down attempts per game
-NFL 16,Fumbles lost per game (offense)
-NFL 17,Kickoff return yards per game
-NFL 18,Punt return yards per game
-NFL 19,Field goals made per game
-NFL 20,Field goal attempts per game
-NFL 21,FG% 40–49 yards
-NFL 22,FG% 50+ yards
-NFL 23,Defensive touchdowns per game
-NFL 24,INT return yards per game
-NFL 25,Fumble return yards per game
-NFL 26,Points allowed per game (defense)
-NFL 27,Passing yards allowed per game (defense)
-NFL 28,Rushing yards allowed per game (defense)
-NFL 29,Extra point percentage
-NFL 30,Extra point attempts per game
-NFL 31,Extra points made per game
-NFL 32,Kickoff average yards
-NFL 33,Gross punt average yards
-NFL 34,Passing attempts per game (team)
-NFL 35,Rushing attempts per game (team)
-NFL 36,Completions per game (team)
-QB_YDS,Starting QB passing yards (season-to-date)
-RB_YDS,Starting RB rushing yards (season-to-date)
-WR_YDS,Starting WR receiving yards (season-to-date)
-K_FG_PCT,Starting K field goal percentage (season-to-date)
+NFL 1,Rushing yards for starter RB (per game or season avg)
+NFL 2,Passing yards for starter QB (per game or season avg)
+NFL 3,Field goal percentage for starter K
+NFL 4,Receiving yards for starter WR (per game or season avg)
+
+NFL 5,Team offensive passing yards per game
+NFL 6,Team offensive rushing yards per game
+NFL 7,Team receiving yards per game
+NFL 8,Team first downs per game
+NFL 9,Team 3rd down conversion percentage
+NFL 10,Team kickoff return yards per game
+NFL 11,Team punt return yards per game
+NFL 12,Team sacks per game (defense)
+NFL 13,Defensive interceptions per game (proxy for top defender INTs)
+NFL 14,Defensive forced fumbles per game
+NFL 15,Team passing yards allowed per game (pass defense)
+NFL 16,Team rushing yards allowed per game (run defense)
+NFL 17,Team receiving yards allowed per game (receiving defense)
+NFL 18,Giveaway–takeaway differential per game
+NFL 19,Team defensive interceptions per game (full defense)
+NFL 20,Team fumbles per game (offense giveaways via fumbles)
+NFL 21,Team sacks per game (defense) – duplicate for compatibility
+NFL 22,1st quarter scoring (per game) – placeholder for future split
+NFL 23,4th quarter scoring (per game) – placeholder for future split
+NFL 24,1st quarter allowed scoring (per game) – placeholder
+NFL 25,4th quarter allowed scoring (per game) – placeholder
+NFL 26,Rushing attempts per game (offense)
+NFL 27,Passing attempts per game (offense)
+NFL 28,Completions per game (offense)
+NFL 29,Quarterback rating (team)
+NFL 30,Completion percentage (team)
+NFL 31,Penalties per game
+NFL 32,4th down conversion percentage (offense)
+NFL 33,Road points per game (team)
+NFL 34,Home points per game (team)
