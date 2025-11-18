@@ -6,4 +6,4 @@ archive_dir: "archive"
 log_dir: "logs"
 only_teams_playing_today: true
 date_override: "2025-11-02"
-
+target_date: "2024-10-20"
